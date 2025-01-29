@@ -1,5 +1,75 @@
 import { Link } from "react-router";
 
+interface Navigation {
+  name: string;
+  href?: string; // Only works when children is undefined
+  children?: Navigation[];
+}
+
+const navigationMenu: Navigation[] = [
+  { name: "Home", href: "/" },
+  { name: "About", href: "/about" },
+  { name: "Contact", href: "/contact" },
+  {
+    name: "Products",
+    children: [
+      { name: "Product 1", href: "/products/1" },
+      { name: "Product 2", href: "/products/2" },
+    ],
+  },
+];
+
+export function MobileMenu({ navigation }: { navigation: Navigation[] }) {
+  return (
+    <ul
+      tabIndex={0}
+      className="menu menu-sm dropdown-content bg-base-200 border border-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
+    >
+      {navigation.map((item, index) => (
+        <li key={index}>
+          <Link to={{ pathname: item.children ? undefined : item.href }}>
+            {item.name}
+          </Link>
+          {item.children && (
+            <ul className="p-2">
+              {item.children.map((child, childIndex) => (
+                <li key={childIndex}>
+                  <Link to={{ pathname: child.href }}>{child.name}</Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function DesktopMenu({ navigation }: { navigation: Navigation[] }) {
+  return (
+    <ul className="menu menu-horizontal px-1">
+      {navigation.map((item, index) => (
+        <li key={index}>
+          {item.children ? (
+            <details>
+              <summary>{item.name}</summary>
+              <ul className="bg-base-200 border border-base-300 rounded-box z-1 mt-3 w-52 shadow">
+                {item.children.map((child, childIndex) => (
+                  <li key={childIndex}>
+                    <Link to={{ pathname: child.href }}>{child.name}</Link>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : (
+            <Link to={{ pathname: item.href }}>{item.name}</Link>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function Header() {
   return (
     <div className="navbar bg-base-200 rounded-lg">
@@ -22,53 +92,12 @@ export default function Header() {
               />{" "}
             </svg>
           </div>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
-          >
-            <li>
-              <a>Item 1</a>
-            </li>
-            <li>
-              <a>Parent</a>
-              <ul className="p-2">
-                <li>
-                  <a>Submenu 1</a>
-                </li>
-                <li>
-                  <a>Submenu 2</a>
-                </li>
-              </ul>
-            </li>
-            <li>
-              <a>Item 3</a>
-            </li>
-          </ul>
+          <MobileMenu navigation={navigationMenu} />
         </div>
         <a className="btn btn-ghost text-xl">daisyUI</a>
       </div>
       <div className="navbar-center hidden lg:flex">
-        <ul className="menu menu-horizontal px-1">
-          <li>
-            <a>Item 1</a>
-          </li>
-          <li>
-            <details>
-              <summary>Parent</summary>
-              <ul className="p-2">
-                <li>
-                  <a>Submenu 1</a>
-                </li>
-                <li>
-                  <a>Submenu 2</a>
-                </li>
-              </ul>
-            </details>
-          </li>
-          <li>
-            <a>Item 3</a>
-          </li>
-        </ul>
+        <DesktopMenu navigation={navigationMenu} />
       </div>
       <div className="navbar-end">
         <div className="dropdown dropdown-end">
@@ -86,7 +115,7 @@ export default function Header() {
           </div>
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
+            className="menu menu-sm dropdown-content bg-base-200 border border-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
           >
             <li>
               <a className="justify-between">
