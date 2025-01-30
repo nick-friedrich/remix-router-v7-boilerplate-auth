@@ -5,8 +5,8 @@
 
 @plugin "daisyui/theme" {
   name: "weirdchad";
-  default: true;
-  prefersdark: true;
+  default: false;
+  prefersdark: false;
   color-scheme: "dark";
   --color-base-100: oklch(12% 0.042 264.695);
   --color-base-200: oklch(20% 0.042 265.755);

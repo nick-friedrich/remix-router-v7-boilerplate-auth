@@ -2,9 +2,9 @@ import { Link } from "react-router";
 
 export default function Login() {
   return (
-    <div className="flex flex-col items-center  gap-4 my-12 shadow">
+    <div className="flex flex-col items-center  gap-4 my-12">
       <h1 className="text-2xl font-bold">Login</h1>
-      <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px]">
+      <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
         <div className="flex flex-col gap-1">
           <label
             htmlFor="email"
