@@ -26,6 +26,7 @@ export function AuthProvider({
       await fetch("/auth/logout", {
         method: "POST",
       });
+
       navigate("/auth/login");
     },
   };

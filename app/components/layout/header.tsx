@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useAuth } from "../provider/auth-provider";
 import { Button } from "../common/button";
+import { UserCircle, UserIcon } from "lucide-react";
 
 interface Navigation {
   name: string;
@@ -134,11 +135,10 @@ export default function Header() {
               role="button"
               className="btn btn-ghost btn-circle avatar"
             >
-              <div className="w-10 rounded-full">
-                <img
-                  alt="Tailwind CSS Navbar component"
-                  src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                />
+              <div className="w-8 rounded-full bg-base-300">
+                <div className="flex items-center justify-center w-full h-full">
+                  <UserIcon className="w-4 h-4" />
+                </div>
               </div>
             </div>
             <ul

@@ -168,7 +168,8 @@ export class UserService {
       request.headers.get("Cookie")
     );
     const sessionId = cookieSession.get("sessionId");
-    await this.invalidateSession(sessionId);
+    const user = await this.getSessionUser(sessionId);
+    await this.invalidateAllUserSessions(user?.id ?? "");
   }
 
   // Get the user of a session
@@ -186,16 +187,15 @@ export class UserService {
   }
 
   static async invalidateSession(sessionId: string): Promise<void> {
-    await db.session.update({
+    await db.session.delete({
       where: { id: sessionId },
-      data: { deletedAt: new Date() }
     });
   }
 
   static async invalidateAllUserSessions(userId: string): Promise<void> {
-    await db.session.updateMany({
-      where: { userId, deletedAt: null },
-      data: { deletedAt: new Date() }
+    console.log("invalidateAllUserSessions", userId);
+    await db.session.deleteMany({
+      where: { userId },
     });
   }
 
