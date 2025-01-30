@@ -7,6 +7,7 @@ import type { Session, User } from "@prisma/client";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { createCookieSessionStorage } from "react-router";
+import { Mail } from "~/lib/mail.server";
 
 // Basic Configuration
 const VERIFY_EMAIL = true;
@@ -22,6 +23,12 @@ const createUserSchema = z.object({
   password: z.string()
     .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters")
     .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters"),
+});
+
+const signUpWithPasswordAndEmailSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+  confirmPassword: z.string().min(1, "Password is required"),
 });
 
 const signInWithPasswordAndEmailSchema = z.object({
@@ -95,14 +102,23 @@ export class UserService {
   }
 
   // Create a new user
-  static async signUpWithPasswordAndEmail(data: z.infer<typeof createUserSchema>): Promise<User> {
-    const validated = createUserSchema.parse(data);
+  static async signUpWithPasswordAndEmail(data: z.infer<typeof signUpWithPasswordAndEmailSchema>): Promise<User> {
+    const validated = signUpWithPasswordAndEmailSchema.parse(data);
+    if (validated.password !== validated.confirmPassword) {
+      throw new Error("Passwords do not match");
+    }
     const hashedPassword = await bcrypt.hash(validated.password, PASSWORD_SALT_ROUNDS);
-
+    const emailVerifiedAt = VERIFY_EMAIL ? new Date() : null;
+    if (VERIFY_EMAIL) {
+      const token = crypto.randomUUID();
+      await this.setVerificationToken({ userId: validated.email, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
+      await this.sendVerificationEmail({ userId: validated.email, resetPassword: false });
+    }
     return db.user.create({
       data: {
         email: validated.email,
-        password: hashedPassword
+        password: hashedPassword,
+        emailVerifiedAt
       }
     });
   }
@@ -130,11 +146,7 @@ export class UserService {
   }
 
   // Set a verification token for a user
-  static async setVerificationToken(
-    userId: string,
-    token: string,
-    expiresAt: Date
-  ): Promise<User> {
+  static async setVerificationToken({ userId, token, expiresAt }: { userId: string, token: string, expiresAt: Date }): Promise<User> {
     const validatedId = idSchema.parse(userId);
     const validatedToken = z.string().min(1).parse(token);
     const validatedDate = z.date().parse(expiresAt);
@@ -142,6 +154,16 @@ export class UserService {
     return this.update(validatedId, {
       verificationToken: validatedToken,
       verificationTokenExpiresAt: validatedDate
+    });
+  }
+
+  static async sendVerificationEmail({ userId, resetPassword }: { userId: string, resetPassword: boolean }): Promise<void> {
+    const user = await this.findById(userId);
+    const url = `${process.env.APP_URL}/auth/login/otp/verify?token=${user?.verificationToken}${resetPassword ? `&resetPassword=true` : ""}`;
+    await Mail.sendEmail({
+      to: user?.email ?? "",
+      subject: process.env.APP_NAME + " - " + (resetPassword ? "Reset your password" : "Verify your email"),
+      body: `Click <a href="${url}">here</a> to ${resetPassword ? "reset your password" : "verify your email"}.`
     });
   }
 

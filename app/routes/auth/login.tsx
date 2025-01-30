@@ -17,6 +17,12 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (isAuthenticated) {
     return redirect("/dashboard");
   }
+  const url = new URL(request.url);
+  const showEmailSentMessage = url.searchParams.get("showEmailSentMessage");
+  if (showEmailSentMessage) {
+    return { showEmailSentMessage };
+  }
+  // Unnecessary but let's keep it for now
   return { isAuthenticated };
 }
 
@@ -46,7 +52,10 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-export default function Login({ actionData }: Route.ComponentProps) {
+export default function Login({
+  actionData,
+  loaderData,
+}: Route.ComponentProps) {
   const navigation = useNavigation();
 
   return (
@@ -56,6 +65,12 @@ export default function Login({ actionData }: Route.ComponentProps) {
         <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
           {actionData?.error && (
             <Alert variant="error-soft" message={actionData.error} />
+          )}
+          {loaderData?.showEmailSentMessage && (
+            <Alert
+              variant="success-soft"
+              message="Please check your email for a link to verify your email address."
+            />
           )}
           <div className="flex flex-col gap-1">
             <Input
