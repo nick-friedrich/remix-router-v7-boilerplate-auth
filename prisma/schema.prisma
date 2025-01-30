@@ -16,6 +16,7 @@ datasource db {
 model User {
   id        String   @id @default(uuid())  // Consider uuid instead of cuid
   email     String   @unique
+  name      String?
   password  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

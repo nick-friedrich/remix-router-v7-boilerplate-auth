@@ -72,6 +72,7 @@ export class UserService {
     });
   }
 
+
   // Sign In with Password and Email
   static async signInWithPasswordAndEmail(
     data: z.infer<typeof signInWithPasswordAndEmailSchema>
@@ -86,7 +87,9 @@ export class UserService {
     if (!bcrypt.compareSync(validated.password, user.password ?? "")) {
       throw new Error("Invalid email or password");
     }
-
+    if (VERIFY_EMAIL && !user.emailVerifiedAt) {
+      throw new Error("Email not verified. Please check your inbox.");
+    }
     const { session, headers } = await this.createSession(user.id);
     return { user, session, headers };
   }
@@ -159,6 +162,15 @@ export class UserService {
    * 
   */
 
+  // Logout a user
+  static async logout(request: Request) {
+    const cookieSession = await sessionStorage.getSession(
+      request.headers.get("Cookie")
+    );
+    const sessionId = cookieSession.get("sessionId");
+    await this.invalidateSession(sessionId);
+  }
+
   // Get the user of a session
   static async getSessionUser(sessionId: string): Promise<User | null> {
     const session = await db.session.findUnique({
@@ -190,7 +202,10 @@ export class UserService {
   static async createSession(userId: string): Promise<{ session: Session; headers: Headers }> {
     const validatedId = idSchema.parse(userId);
     const expiresAt = new Date(Date.now() + SESSION_DURATION);
+    // Invalidate all sessions for the user
+    await this.invalidateAllUserSessions(validatedId);
 
+    // Create a new session for the user
     const session = await db.session.create({
       data: {
         userId: validatedId,

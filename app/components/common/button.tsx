@@ -7,6 +7,7 @@ export function Button({
   className,
   variant = "primary",
   disabled,
+  onClick,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -14,6 +15,7 @@ export function Button({
   asAnchor?: boolean;
   href?: string;
   disabled?: boolean;
+  onClick?: () => void;
 }) {
   const variantClass = {
     primary: "btn-primary",
@@ -29,6 +31,7 @@ export function Button({
       <Link
         to={{ pathname: href }}
         className={`btn ${variantClass[variant]} ${className}`}
+        onClick={onClick}
       >
         {children}
       </Link>
@@ -39,6 +42,7 @@ export function Button({
     <button
       className={`btn ${variantClass[variant]} ${className}`}
       disabled={disabled}
+      onClick={onClick}
     >
       {children}
     </button>

@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import { useAuth } from "../provider/auth-provider";
+import { Button } from "../common/button";
 
 interface Navigation {
   name: string;
@@ -82,12 +84,20 @@ export function DesktopMenu({ navigation }: { navigation: Navigation[] }) {
 }
 
 export default function Header() {
+  const { user, isAuthenticated, logout } = useAuth();
+
   const handleClick = () => {
     const elem = document.activeElement;
     if (elem) {
       (elem as HTMLElement).blur();
     }
   };
+
+  const handleLogout = () => {
+    logout();
+    handleClick();
+  };
+
   return (
     <div className="navbar bg-base-100 rounded-lg">
       <div className="navbar-start">
@@ -117,47 +127,40 @@ export default function Header() {
         <DesktopMenu navigation={navigationMenu} />
       </div>
       <div className="navbar-end">
-        <div className="dropdown dropdown-end">
-          <div
-            tabIndex={0}
-            role="button"
-            className="btn btn-ghost btn-circle avatar"
-          >
-            <div className="w-10 rounded-full">
-              <img
-                alt="Tailwind CSS Navbar component"
-                src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-              />
+        {isAuthenticated ? (
+          <div className="dropdown dropdown-end">
+            <div
+              tabIndex={0}
+              role="button"
+              className="btn btn-ghost btn-circle avatar"
+            >
+              <div className="w-10 rounded-full">
+                <img
+                  alt="Tailwind CSS Navbar component"
+                  src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+                />
+              </div>
             </div>
+            <ul
+              tabIndex={0}
+              className="menu menu-sm dropdown-content bg-base-200 border border-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
+            >
+              <li>
+                <span>
+                  Welcome {user?.name != null ? user.name : user?.email}
+                </span>
+              </li>
+
+              <li>
+                <a onClick={handleLogout}>Logout</a>
+              </li>
+            </ul>
           </div>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-200 border border-base-300 rounded-box z-1 mt-3 w-52 p-2 shadow"
-          >
-            <li>
-              <a className="justify-between">
-                Profile
-                <span className="badge">New</span>
-              </a>
-            </li>
-            <li>
-              <a>Settings</a>
-            </li>
-            <li>
-              <a>Logout</a>
-            </li>
-            <li>
-              <Link to="/auth/login" onClick={handleClick}>
-                Login
-              </Link>
-            </li>
-            <li>
-              <Link to="/auth/signup" onClick={handleClick}>
-                Signup
-              </Link>
-            </li>
-          </ul>
-        </div>
+        ) : (
+          <Button asAnchor href="/auth/login" onClick={handleClick}>
+            Login
+          </Button>
+        )}
       </div>
     </div>
   );

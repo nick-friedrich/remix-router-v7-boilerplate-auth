@@ -12,6 +12,14 @@ type FieldErrors = {
   [key: string]: string;
 };
 
+export async function loader({ request }: Route.LoaderArgs) {
+  const { isAuthenticated } = await UserService.checkServerSideAuth(request);
+  if (isAuthenticated) {
+    return redirect("/dashboard");
+  }
+  return { isAuthenticated };
+}
+
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const email = formData.get("email")?.toString();
