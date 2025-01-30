@@ -1,10 +1,11 @@
-import { Link, type ActionFunctionArgs } from "react-router";
+import { Form, Link, type ActionFunctionArgs } from "react-router";
 import { Button } from "~/components/common/button";
 import Input from "~/components/common/input";
 import { UserService } from "~/model/user.server";
 import { redirect } from "react-router";
 import type { Route } from "./+types/signup";
 import { ZodError } from "zod";
+import Alert from "~/components/common/alert";
 
 type FieldErrors = {
   [key: string]: string;
@@ -51,33 +52,57 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 // TODO: Integrate into UI
-export default function Signup() {
+export default function Signup({ actionData }: Route.ComponentProps) {
   return (
-    <div className="flex flex-col items-center  gap-4 my-12">
-      <h1 className="text-2xl font-bold">Create an account</h1>
-      <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
-        <div className="flex flex-col gap-1">
-          <Input label="E-Mail" placeholder="E-Mail" type="text" name="email" />
-          <Input
-            label="Password"
-            placeholder="Password"
-            type="password"
-            name="password"
-          />
+    <Form method="post">
+      <div className="flex flex-col items-center  gap-4 my-12">
+        <h1 className="text-2xl font-bold">Create an account</h1>
+        <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
+          {actionData?.error && (
+            <Alert variant="error-soft" message={actionData.error} />
+          )}
+          <div className="flex flex-col gap-1">
+            <Input
+              label="E-Mail"
+              placeholder="E-Mail"
+              type="text"
+              name="email"
+            />
+            {actionData?.fieldErrors?.email && (
+              <div className="text-red-500 text-sm">
+                {actionData.fieldErrors.email}
+              </div>
+            )}
+            <Input
+              label="Password"
+              placeholder="Password"
+              type="password"
+              name="password"
+            />
+            {actionData?.fieldErrors?.password && (
+              <div className="text-red-500 text-sm">
+                {actionData.fieldErrors.password}
+              </div>
+            )}
+            <Input
+              label="Confirm Password"
+              placeholder="Confirm Password"
+              type="password"
+              name="confirmPassword"
+            />
+            {actionData?.fieldErrors?.confirmPassword && (
+              <div className="text-red-500 text-sm">
+                {actionData.fieldErrors.confirmPassword}
+              </div>
+            )}
+          </div>
 
-          <Input
-            label="Confirm Password"
-            placeholder="Confirm Password"
-            type="password"
-            name="confirmPassword"
-          />
+          <Button>Sign up</Button>
+          <Link to={{ pathname: "/auth/login" }} className="text-sm">
+            Already have an account? <b>Login</b>
+          </Link>
         </div>
-
-        <Button>Sign up</Button>
-        <Link to={{ pathname: "/auth/login" }} className="text-sm">
-          Already have an account? <b>Login</b>
-        </Link>
       </div>
-    </div>
+    </Form>
   );
 }

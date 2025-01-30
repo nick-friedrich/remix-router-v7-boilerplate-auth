@@ -27,8 +27,10 @@ const createUserSchema = z.object({
 
 const signUpWithPasswordAndEmailSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-  confirmPassword: z.string().min(1, "Password is required"),
+  password: z.string()
+    .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters")
+    .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters"),
+  confirmPassword: z.string().min(1, "Confirm Password is required"),
 });
 
 const signInWithPasswordAndEmailSchema = z.object({
