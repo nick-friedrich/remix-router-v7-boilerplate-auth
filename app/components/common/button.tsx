@@ -6,12 +6,14 @@ export function Button({
   children,
   className,
   variant = "primary",
+  disabled,
 }: {
   children: React.ReactNode;
   className?: string;
   variant?: "primary" | "secondary" | "success" | "error" | "warning" | "info";
   asAnchor?: boolean;
   href?: string;
+  disabled?: boolean;
 }) {
   const variantClass = {
     primary: "btn-primary",
@@ -34,7 +36,10 @@ export function Button({
   }
 
   return (
-    <button className={`btn ${variantClass[variant]} ${className}`}>
+    <button
+      className={`btn ${variantClass[variant]} ${className}`}
+      disabled={disabled}
+    >
       {children}
     </button>
   );
