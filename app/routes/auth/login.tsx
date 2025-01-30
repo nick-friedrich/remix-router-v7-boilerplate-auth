@@ -6,7 +6,7 @@ import { UserService } from "~/model/user.server";
 import { ZodError } from "zod";
 import type { Route } from "./+types/login";
 import Alert from "~/components/common/alert";
-import { useEffect } from "react";
+import { redirect } from "react-router";
 
 type FieldErrors = {
   [key: string]: string;
@@ -16,12 +16,14 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
+
   try {
-    const user = await UserService.signInWithPasswordAndEmail({
+    const { user, headers } = await UserService.signInWithPasswordAndEmail({
       email: email!,
       password: password!,
     });
-    return { user };
+
+    return redirect("/dashboard", { headers });
   } catch (error) {
     if (error instanceof ZodError) {
       const fieldErrors: FieldErrors = error.errors.reduce((acc, curr) => {

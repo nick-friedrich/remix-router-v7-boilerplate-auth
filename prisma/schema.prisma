@@ -21,6 +21,8 @@ model User {
   updatedAt DateTime @updatedAt
   deletedAt DateTime? @map("deleted_at")   // Better naming convention
   
+  sessions Session[]
+
   // Verification fields
   emailVerifiedAt DateTime? @map("email_verified_at")
   verificationToken String? @unique @map("verification_token")  // Add unique constraint
@@ -30,3 +32,20 @@ model User {
   @@index([email])
   @@index([verificationToken])
 }
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  // Add indexes
+  @@index([userId])
+  @@index([expiresAt])
+}
+

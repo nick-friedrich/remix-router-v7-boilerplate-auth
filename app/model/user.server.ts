@@ -3,9 +3,10 @@
  */
 
 import { db } from "../lib/db.server";
-import type { User } from "@prisma/client";
+import type { Session, User } from "@prisma/client";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { createCookieSessionStorage } from "react-router";
 
 // Basic Configuration
 const VERIFY_EMAIL = true;
@@ -13,6 +14,7 @@ const VERIFICATION_TOKEN_EXPIRATION_TIME = 1000 * 60 * 60 * 24; // 1 day
 const PASSWORD_SALT_ROUNDS = 10;
 const PASSWORD_MIN_LENGTH = 8;
 const PASSWORD_MAX_LENGTH = 128;
+const SESSION_DURATION = 1000 * 60 * 60 * 24; // 1 day
 
 // Zod schemas for validation
 const createUserSchema = z.object({
@@ -35,6 +37,17 @@ const updateUserSchema = z.object({
 });
 
 const idSchema = z.string().uuid();
+
+export const sessionStorage = createCookieSessionStorage({
+  cookie: {
+    name: "__session",
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secrets: [process.env.SESSION_SECRET!],
+    secure: process.env.NODE_ENV === "production",
+  },
+});
 
 /*
  * User Service
@@ -60,10 +73,13 @@ export class UserService {
   }
 
   // Sign In with Password and Email
-  static async signInWithPasswordAndEmail(data: z.infer<typeof signInWithPasswordAndEmailSchema>): Promise<User> {
+  static async signInWithPasswordAndEmail(
+    data: z.infer<typeof signInWithPasswordAndEmailSchema>
+  ): Promise<{ user: User; session: Session; headers: Headers }> {
     await new Promise(resolve => setTimeout(resolve, 1000));
     const validated = signInWithPasswordAndEmailSchema.parse(data);
     const user = await this.findByEmail(validated.email);
+
     if (!user) {
       throw new Error("Invalid email or password");
     }
@@ -71,9 +87,8 @@ export class UserService {
       throw new Error("Invalid email or password");
     }
 
-    // TODO: Create a session
-
-    return user;
+    const { session, headers } = await this.createSession(user.id);
+    return { user, session, headers };
   }
 
   // Create a new user
@@ -135,5 +150,80 @@ export class UserService {
       verificationToken: null,
       verificationTokenExpiresAt: null
     });
+  }
+
+  /*
+   *
+   * Session
+   * 
+   * 
+  */
+
+  // Get the user of a session
+  static async getSessionUser(sessionId: string): Promise<User | null> {
+    const session = await db.session.findUnique({
+      where: {
+        id: sessionId,
+        deletedAt: null,
+        expiresAt: { gt: new Date() }
+      },
+      include: { user: true }
+    });
+
+    return session?.user ?? null;
+  }
+
+  static async invalidateSession(sessionId: string): Promise<void> {
+    await db.session.update({
+      where: { id: sessionId },
+      data: { deletedAt: new Date() }
+    });
+  }
+
+  static async invalidateAllUserSessions(userId: string): Promise<void> {
+    await db.session.updateMany({
+      where: { userId, deletedAt: null },
+      data: { deletedAt: new Date() }
+    });
+  }
+
+  static async createSession(userId: string): Promise<{ session: Session; headers: Headers }> {
+    const validatedId = idSchema.parse(userId);
+    const expiresAt = new Date(Date.now() + SESSION_DURATION);
+
+    const session = await db.session.create({
+      data: {
+        userId: validatedId,
+        expiresAt,
+      },
+    });
+
+    const cookieSession = await sessionStorage.getSession();
+    cookieSession.set("sessionId", session.id);
+
+    return {
+      session,
+      headers: new Headers({
+        "Set-Cookie": await sessionStorage.commitSession(cookieSession),
+      }),
+    };
+  }
+
+  static async checkServerSideAuth(request: Request) {
+    const cookieSession = await sessionStorage.getSession(
+      request.headers.get("Cookie")
+    );
+    const sessionId = cookieSession.get("sessionId");
+
+    if (!sessionId) {
+      return { isAuthenticated: false, user: null };
+    }
+
+    const user = await this.getSessionUser(sessionId);
+    if (!user) {
+      return { isAuthenticated: false, user: null };
+    }
+
+    return { isAuthenticated: true, user };
   }
 }

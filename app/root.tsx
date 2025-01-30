@@ -6,12 +6,14 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
+import { UserService, sessionStorage } from "~/model/user.server";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 import Header from "./components/layout/header";
 import Footer from "./components/layout/footer";
 import { SiteProvider, useSite } from "./components/provider/site-provider";
+import { AuthProvider } from "./components/provider/auth-provider";
 
 /*
  * Loader
@@ -20,11 +22,14 @@ import { SiteProvider, useSite } from "./components/provider/site-provider";
  * It is used to pass the appName and baseUrl to the SiteProvider.
  */
 
-export function loader() {
-  const appName = process.env.APP_NAME;
-  const baseUrl = process.env.APP_URL;
+export async function loader({ request }: Route.LoaderArgs) {
+  const cookieSession = await sessionStorage.getSession(
+    request.headers.get("Cookie")
+  );
+  const sessionId = cookieSession.get("sessionId");
 
-  return { appName, baseUrl };
+  const user = sessionId ? await UserService.getSessionUser(sessionId) : null;
+  return { user, appName: process.env.APP_NAME, baseUrl: process.env.APP_URL };
 }
 
 /*
@@ -79,28 +84,33 @@ export default function App({ loaderData }: Route.ComponentProps) {
       appName={loaderData?.appName || ""}
       baseUrl={loaderData?.baseUrl || ""}
     >
-      <html lang="en" data-theme="winter">
-        <head>
-          <meta charSet="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <Meta />
-          <Links />
-        </head>
-        <body>
-          <div className="flex flex-col min-h-screen">
-            <div className="m-2">
-              <Header />
-            </div>
-            <div className="flex-grow p-4">
-              <Outlet />
-            </div>
+      <AuthProvider value={loaderData?.user}>
+        <html lang="en" data-theme="winter">
+          <head>
+            <meta charSet="utf-8" />
+            <meta
+              name="viewport"
+              content="width=device-width, initial-scale=1"
+            />
+            <Meta />
+            <Links />
+          </head>
+          <body>
+            <div className="flex flex-col min-h-screen">
+              <div className="m-2">
+                <Header />
+              </div>
+              <div className="flex-grow p-4">
+                <Outlet />
+              </div>
 
-            <Footer />
-          </div>
-          <ScrollRestoration />
-          <Scripts />
-        </body>
-      </html>
+              <Footer />
+            </div>
+            <ScrollRestoration />
+            <Scripts />
+          </body>
+        </html>
+      </AuthProvider>
     </SiteProvider>
   );
 }
