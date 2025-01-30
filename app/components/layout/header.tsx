@@ -20,6 +20,12 @@ const navigationMenu: Navigation[] = [
 ];
 
 export function MobileMenu({ navigation }: { navigation: Navigation[] }) {
+  const handleClick = () => {
+    const elem = document.activeElement;
+    if (elem) {
+      (elem as HTMLElement).blur();
+    }
+  };
   return (
     <ul
       tabIndex={0}
@@ -27,14 +33,19 @@ export function MobileMenu({ navigation }: { navigation: Navigation[] }) {
     >
       {navigation.map((item, index) => (
         <li key={index}>
-          <Link to={{ pathname: item.children ? undefined : item.href }}>
+          <Link
+            to={{ pathname: item.children ? undefined : item.href }}
+            onClick={handleClick}
+          >
             {item.name}
           </Link>
           {item.children && (
             <ul className="p-2">
               {item.children.map((child, childIndex) => (
                 <li key={childIndex}>
-                  <Link to={{ pathname: child.href }}>{child.name}</Link>
+                  <Link to={{ pathname: child.href }} onClick={handleClick}>
+                    {child.name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -71,8 +82,14 @@ export function DesktopMenu({ navigation }: { navigation: Navigation[] }) {
 }
 
 export default function Header() {
+  const handleClick = () => {
+    const elem = document.activeElement;
+    if (elem) {
+      (elem as HTMLElement).blur();
+    }
+  };
   return (
-    <div className="navbar bg-base-200 rounded-lg">
+    <div className="navbar bg-base-100 rounded-lg">
       <div className="navbar-start">
         <div className="dropdown">
           <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
@@ -128,6 +145,16 @@ export default function Header() {
             </li>
             <li>
               <a>Logout</a>
+            </li>
+            <li>
+              <Link to="/auth/login" onClick={handleClick}>
+                Login
+              </Link>
+            </li>
+            <li>
+              <Link to="/auth/signup" onClick={handleClick}>
+                Signup
+              </Link>
             </li>
           </ul>
         </div>
