@@ -1,4 +1,9 @@
-import { Form, Link, type ActionFunctionArgs } from "react-router";
+import {
+  Form,
+  Link,
+  useNavigation,
+  type ActionFunctionArgs,
+} from "react-router";
 import { Button } from "~/components/common/button";
 import Input from "~/components/common/input";
 import { UserService } from "~/model/user.server";
@@ -53,6 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 // TODO: Integrate into UI
 export default function Signup({ actionData }: Route.ComponentProps) {
+  const navigation = useNavigation();
   return (
     <Form method="post">
       <div className="flex flex-col items-center  gap-4 my-12">
@@ -97,7 +103,12 @@ export default function Signup({ actionData }: Route.ComponentProps) {
             )}
           </div>
 
-          <Button>Sign up</Button>
+          <Button
+            disabled={navigation.state === "submitting"}
+            variant="primary"
+          >
+            {navigation.state === "submitting" ? "Signing up..." : "Sign up"}
+          </Button>
           <Link to={{ pathname: "/auth/login" }} className="text-sm">
             Already have an account? <b>Login</b>
           </Link>
