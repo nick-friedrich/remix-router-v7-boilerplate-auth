@@ -11,7 +11,49 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import Header from "./components/layout/header";
 import Footer from "./components/layout/footer";
+import { SiteProvider, useSite } from "./components/provider/site-provider";
 
+/*
+ * Loader
+ *
+ * This is the loader for the root route.
+ * It is used to pass the appName and baseUrl to the SiteProvider.
+ */
+
+export function loader() {
+  const appName = process.env.APP_NAME;
+  const baseUrl = process.env.APP_URL;
+
+  return { appName, baseUrl };
+}
+
+/*
+ * Meta
+ *
+ * This is the meta function for the root route.
+ * It is used to set the title and description for the page.
+ */
+export function meta() {
+  const { appName } = useSite();
+  return [
+    { title: appName },
+    {
+      property: "og:title",
+      content: "My App",
+    },
+    {
+      name: "description",
+      content: "My App",
+    },
+  ];
+}
+
+/*
+ * Links
+ *
+ * This is the links function for the root route.
+ * It is used to add the preconnect and stylesheet links to the page.
+ */
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -25,32 +67,42 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+/*
+ * App
+ *
+ * This is the main component for the root route.
+ * It is used to wrap the app in the SiteProvider and provide the loader data.
+ */
+export default function App({ loaderData }: Route.ComponentProps) {
   return (
-    <html lang="en" data-theme="winter">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
-        <Links />
-      </head>
-      <body>
-        <div className="flex flex-col min-h-screen">
-          <div className="m-2">
-            <Header />
-          </div>
-          <div className="flex-grow p-4">{children}</div>
-          <Footer />
-        </div>
-        <ScrollRestoration />
-        <Scripts />
-      </body>
-    </html>
-  );
-}
+    <SiteProvider
+      appName={loaderData?.appName || ""}
+      baseUrl={loaderData?.baseUrl || ""}
+    >
+      <html lang="en" data-theme="winter">
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <Meta />
+          <Links />
+        </head>
+        <body>
+          <div className="flex flex-col min-h-screen">
+            <div className="m-2">
+              <Header />
+            </div>
+            <div className="flex-grow p-4">
+              <Outlet />
+            </div>
 
-export default function App() {
-  return <Outlet />;
+            <Footer />
+          </div>
+          <ScrollRestoration />
+          <Scripts />
+        </body>
+      </html>
+    </SiteProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
