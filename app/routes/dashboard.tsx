@@ -3,6 +3,7 @@ import type { Route } from "./+types/dashboard";
 import { redirect } from "react-router";
 import { UserService } from "~/model/user.server";
 
+// TODO: Implement Verify Email Success Message
 export async function loader({ request }: Route.LoaderArgs) {
   const { isAuthenticated, user } = await UserService.checkServerSideAuth(
     request

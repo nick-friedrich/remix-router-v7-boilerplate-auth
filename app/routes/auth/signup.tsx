@@ -65,7 +65,6 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-// TODO: Integrate into UI
 export default function Signup({ actionData }: Route.ComponentProps) {
   const navigation = useNavigation();
   return (

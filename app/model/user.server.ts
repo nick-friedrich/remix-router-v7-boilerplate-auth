@@ -23,6 +23,7 @@ const createUserSchema = z.object({
   password: z.string()
     .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters")
     .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters"),
+  emailVerifiedAt: z.date().optional()
 });
 
 const signUpWithPasswordAndEmailSchema = z.object({
@@ -81,6 +82,18 @@ export class UserService {
     });
   }
 
+  // Create private function
+  // Just a wrapper around the Prisma create method
+  private static async create(data: z.infer<typeof createUserSchema>): Promise<User> {
+    return db.user.create({
+      data: {
+        email: data.email,
+        password: data.password, // Hashing in the signUpMethod
+        emailVerifiedAt: data.emailVerifiedAt,
+      }
+    });
+  }
+
   // update a user
   static async update(
     id: string,
@@ -102,6 +115,22 @@ export class UserService {
       data: { deletedAt: new Date() }
     });
   }
+
+  static async restore(id: string): Promise<User> {
+    const validatedId = idSchema.parse(id);
+    return db.user.update({
+      where: { id: validatedId },
+      data: { deletedAt: null }
+    });
+  }
+
+  static async delete(id: string): Promise<User> {
+    const validatedId = idSchema.parse(id);
+    return db.user.delete({
+      where: { id: validatedId }
+    });
+  }
+
   // Sign In with Password and Email
   static async signInWithPasswordAndEmail(
     data: z.infer<typeof signInWithPasswordAndEmailSchema>
@@ -123,6 +152,8 @@ export class UserService {
     return { user, session, headers };
   }
 
+  // TODO: signInWithOtp function
+
   // Create a new user
   static async signUpWithPasswordAndEmail(data: z.infer<typeof signUpWithPasswordAndEmailSchema>): Promise<User> {
     const validated = signUpWithPasswordAndEmailSchema.parse(data);
@@ -130,25 +161,23 @@ export class UserService {
       throw new Error("Passwords do not match");
     }
     const hashedPassword = await bcrypt.hash(validated.password, PASSWORD_SALT_ROUNDS);
-    const emailVerifiedAt = VERIFY_EMAIL ? null : new Date();
+    const emailVerifiedAt = VERIFY_EMAIL ? undefined : new Date();
 
-    const user = await db.user.create({
-      data: {
-        email: validated.email,
-        password: hashedPassword,
-        emailVerifiedAt
-      }
+    const user = await this.create({
+      email: validated.email,
+      password: hashedPassword,
+      emailVerifiedAt
     });
 
     if (VERIFY_EMAIL) {
       const token = crypto.randomUUID();
       await this.setVerificationToken({ userId: user.id, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
-      await this.sendVerificationEmail({ userId: user.id, resetPassword: false });
+      await this.sendVerificationEmail({ userId: user.id, verifyMail: true });
     }
     return user;
   }
 
-  // Set a verification token for a user
+  // Set a verification token in the database for a user
   static async setVerificationToken({ userId, token, expiresAt }: { userId: string, token: string, expiresAt: Date }): Promise<User> {
     const validatedId = idSchema.parse(userId);
     const validatedToken = z.string().min(1).parse(token);
@@ -161,13 +190,31 @@ export class UserService {
     return user;
   }
 
-  static async sendVerificationEmail({ userId, resetPassword }: { userId: string, resetPassword: boolean }): Promise<void> {
+  // Send a verification email to a user
+  // Defaults to login via otp, but if we want to direct the user to the reset password page, we can pass in the resetPassword flag
+  // If verifyMail is true, we want to direct the user to the dashboard and show a success message
+  static async sendVerificationEmail({ userId, resetPassword, verifyMail }: { userId: string, resetPassword?: boolean, verifyMail?: boolean }): Promise<void> {
     const user = await this.findById(userId);
-    const url = `${process.env.APP_URL}/auth/login/otp/verify?token=${user?.verificationToken}${resetPassword ? `&resetPassword=true` : ""}`;
+    let subject;
+    let body;
+    let url;
+    if (verifyMail) {
+      subject = process.env.APP_NAME + " - Verify your email";
+      url = `${process.env.APP_URL}/auth/login/otp/validate?token=${user?.verificationToken}&verifyMail=true"}`
+      body = `Click <a href="${url}">here</a> to verify your email.`
+    } else if (resetPassword) {
+      subject = process.env.APP_NAME + " - Reset your password";
+      url = `${process.env.APP_URL}/auth/login/otp/validate?token=${user?.verificationToken}&resetPassword=true`
+      body = `Click <a href="${url}">here</a> to reset your password.`
+    } else {
+      subject = process.env.APP_NAME + " - Login to your account";
+      url = `${process.env.APP_URL}/auth/login/otp/validate?token=${user?.verificationToken}&otp=true"}`
+      body = `Click <a href="${url}">here</a> to login to your account.`
+    }
     await Mail.sendEmail({
       to: user?.email ?? "",
-      subject: process.env.APP_NAME + " - " + (resetPassword ? "Reset your password" : "Verify your email"),
-      body: `Click <a href="${url}">here</a> to ${resetPassword ? "reset your password" : "verify your email"}.`
+      subject,
+      body
     });
   }
 

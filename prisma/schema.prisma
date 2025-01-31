@@ -25,6 +25,7 @@ model User {
   sessions Session[]
 
   // Verification fields
+  // We use this for email verification, reset password and one time password
   emailVerifiedAt DateTime? @map("email_verified_at")
   verificationToken String? @unique @map("verification_token")  // Add unique constraint
   verificationTokenExpiresAt DateTime? @map("verification_token_expires_at")
