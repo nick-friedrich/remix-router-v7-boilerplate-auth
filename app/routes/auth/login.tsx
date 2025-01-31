@@ -62,7 +62,7 @@ export default function Login({
     <Form method="post">
       <div className="flex flex-col items-center gap-4 my-12">
         <h1 className="text-2xl font-bold">Login</h1>
-        <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
+        <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 w-[350px] shadow-sm">
           {actionData?.error && (
             <Alert variant="error-soft" message={actionData.error} />
           )}

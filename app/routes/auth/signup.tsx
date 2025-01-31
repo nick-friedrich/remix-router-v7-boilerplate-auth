@@ -11,6 +11,7 @@ import { redirect } from "react-router";
 import type { Route } from "./+types/signup";
 import { ZodError } from "zod";
 import Alert from "~/components/common/alert";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 type FieldErrors = {
   [key: string]: string;
@@ -38,16 +39,24 @@ export async function action({ request }: ActionFunctionArgs) {
     });
     // Redirect to login if email is not verified
     if (user.emailVerifiedAt === null) {
-      return redirect("/login?showEmailSentMessage=true");
+      return redirect("/auth/login?showEmailSentMessage=true");
     } else {
       return redirect("/dashboard");
     }
   } catch (error) {
+    console.log(error);
     if (error instanceof ZodError) {
       const fieldErrors: FieldErrors = error.errors.reduce((acc, curr) => {
         return { ...acc, [curr.path.join(".")]: curr.message };
       }, {});
       return { fieldErrors };
+    }
+    if (error instanceof PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        return {
+          error: "Email already exists",
+        };
+      }
     }
     return {
       error:
@@ -63,7 +72,7 @@ export default function Signup({ actionData }: Route.ComponentProps) {
     <Form method="post">
       <div className="flex flex-col items-center  gap-4 my-12">
         <h1 className="text-2xl font-bold">Create an account</h1>
-        <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 min-w-[300px] shadow-sm">
+        <div className="flex bg-base-100 p-8 rounded-xl flex-col  gap-4 w-[350px] shadow-sm">
           {actionData?.error && (
             <Alert variant="error-soft" message={actionData.error} />
           )}

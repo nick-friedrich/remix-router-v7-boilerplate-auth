@@ -45,7 +45,7 @@ const updateUserSchema = z.object({
   emailVerifiedAt: z.date().nullable().optional()
 });
 
-const idSchema = z.string().uuid();
+const idSchema = z.string().min(1);
 
 export const sessionStorage = createCookieSessionStorage({
   cookie: {
@@ -81,7 +81,27 @@ export class UserService {
     });
   }
 
+  // update a user
+  static async update(
+    id: string,
+    data: z.infer<typeof updateUserSchema>
+  ): Promise<User> {
+    const validatedId = idSchema.parse(id);
+    const validatedData = updateUserSchema.parse(data);
 
+    return db.user.update({
+      where: { id: validatedId },
+      data: validatedData
+    });
+  }
+
+  static async softDelete(id: string): Promise<User> {
+    const validatedId = idSchema.parse(id);
+    return db.user.update({
+      where: { id: validatedId },
+      data: { deletedAt: new Date() }
+    });
+  }
   // Sign In with Password and Email
   static async signInWithPasswordAndEmail(
     data: z.infer<typeof signInWithPasswordAndEmailSchema>
@@ -110,41 +130,22 @@ export class UserService {
       throw new Error("Passwords do not match");
     }
     const hashedPassword = await bcrypt.hash(validated.password, PASSWORD_SALT_ROUNDS);
-    const emailVerifiedAt = VERIFY_EMAIL ? new Date() : null;
-    if (VERIFY_EMAIL) {
-      const token = crypto.randomUUID();
-      await this.setVerificationToken({ userId: validated.email, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
-      await this.sendVerificationEmail({ userId: validated.email, resetPassword: false });
-    }
-    return db.user.create({
+    const emailVerifiedAt = VERIFY_EMAIL ? null : new Date();
+
+    const user = await db.user.create({
       data: {
         email: validated.email,
         password: hashedPassword,
         emailVerifiedAt
       }
     });
-  }
 
-  // update a user
-  static async update(
-    id: string,
-    data: z.infer<typeof updateUserSchema>
-  ): Promise<User> {
-    const validatedId = idSchema.parse(id);
-    const validatedData = updateUserSchema.parse(data);
-
-    return db.user.update({
-      where: { id: validatedId },
-      data: validatedData
-    });
-  }
-
-  static async softDelete(id: string): Promise<User> {
-    const validatedId = idSchema.parse(id);
-    return db.user.update({
-      where: { id: validatedId },
-      data: { deletedAt: new Date() }
-    });
+    if (VERIFY_EMAIL) {
+      const token = crypto.randomUUID();
+      await this.setVerificationToken({ userId: user.id, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
+      await this.sendVerificationEmail({ userId: user.id, resetPassword: false });
+    }
+    return user;
   }
 
   // Set a verification token for a user
@@ -153,10 +154,11 @@ export class UserService {
     const validatedToken = z.string().min(1).parse(token);
     const validatedDate = z.date().parse(expiresAt);
 
-    return this.update(validatedId, {
+    const user = await this.update(validatedId, {
       verificationToken: validatedToken,
       verificationTokenExpiresAt: validatedDate
     });
+    return user;
   }
 
   static async sendVerificationEmail({ userId, resetPassword }: { userId: string, resetPassword: boolean }): Promise<void> {
