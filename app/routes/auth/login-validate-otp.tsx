@@ -26,7 +26,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   // Redirect to home
-  return redirect("/dashboard");
+  return redirect("/dashboard", { headers });
 }
 
 export default function LoginValidateOtp({ loaderData }: Route.ComponentProps) {

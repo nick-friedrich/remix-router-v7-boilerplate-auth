@@ -12,6 +12,7 @@
 
 ## Features
 
+- (Should work without JS)
 - Login
 - Signup
 - Forgot Password

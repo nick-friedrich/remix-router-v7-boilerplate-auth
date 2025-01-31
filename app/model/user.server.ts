@@ -46,7 +46,8 @@ const updateUserSchema = z.object({
   verificationToken: z.string().nullable().optional(),
   verificationTokenExpiresAt: z.date().nullable().optional(),
   emailVerifiedAt: z.date().nullable().optional(),
-  name: z.string().optional()
+  name: z.string().optional(),
+  password: z.string().optional(),
 });
 
 const idSchema = z.string().min(1);
@@ -167,13 +168,20 @@ export class UserService {
   }
 
   // Sign In with OTP
-  static async signInWithOtp({ email }: { email: string }) {
+  static async signInWithOtp({ email, resetPasswordMode = false }: { email: string, resetPasswordMode?: boolean }) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
     // If we don't have Verify Mail enabled, throw error
     if (!VERIFY_EMAIL) {
       throw new Error("Email Verification is not enabled, you cannot sign in with OTP.");
     }
     const verifiedEmail = z.string().email().parse(email);
     let user = await this.findByEmail(verifiedEmail);
+
+    // We don't want to create a new user on password reset
+    if (!user && resetPasswordMode) {
+      return true;
+    }
+
     if (!user) {
       // Create a new user
       user = await this.create({
@@ -184,7 +192,7 @@ export class UserService {
 
     const token = crypto.randomUUID();
     await this.setVerificationToken({ userId: user.id, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
-    await this.sendVerificationEmail({ userId: user.id, verifyMail: true });
+    await this.sendVerificationEmail({ userId: user.id, verifyMail: false, resetPassword: resetPasswordMode });
 
     return true;
   }
@@ -196,6 +204,12 @@ export class UserService {
     if (!user) {
       throw new Error("Invalid token");
     }
+    // Verify email
+    await this.update(user.id, {
+      verificationToken: null,
+      verificationTokenExpiresAt: null,
+      emailVerifiedAt: new Date(),
+    })
 
     const { session, headers } = await this.createSession(user.id);
     return { user, session, headers };
@@ -223,6 +237,17 @@ export class UserService {
       await this.sendVerificationEmail({ userId: user.id, verifyMail: true });
     }
     return user;
+  }
+
+  static async resetPassword(password: string, confirmPassword: string, userId: string) {
+    const validatedId = idSchema.parse(userId);
+    const hashedPassword = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+    if (password !== confirmPassword) {
+      throw new Error("Passwords do not match");
+    }
+    return this.update(validatedId, {
+      password: hashedPassword,
+    })
   }
 
   // Set a verification token in the database for a user

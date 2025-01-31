@@ -3,11 +3,13 @@ export default function Input({
   placeholder,
   type,
   name,
+  disabled = false,
 }: {
   label: string;
   placeholder: string;
   type: string;
   name: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -20,6 +22,7 @@ export default function Input({
         name={name}
         placeholder={placeholder}
         className="input input-bordered"
+        disabled={disabled}
       />
     </div>
   );
