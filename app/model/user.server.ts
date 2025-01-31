@@ -23,7 +23,8 @@ const createUserSchema = z.object({
   password: z.string()
     .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters")
     .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters"),
-  emailVerifiedAt: z.date().optional()
+  emailVerifiedAt: z.date().optional(),
+  name: z.string().optional(),
 });
 
 const signUpWithPasswordAndEmailSchema = z.object({
@@ -43,7 +44,8 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   verificationToken: z.string().nullable().optional(),
   verificationTokenExpiresAt: z.date().nullable().optional(),
-  emailVerifiedAt: z.date().nullable().optional()
+  emailVerifiedAt: z.date().nullable().optional(),
+  name: z.string().optional()
 });
 
 const idSchema = z.string().min(1);
@@ -90,6 +92,7 @@ export class UserService {
         email: data.email,
         password: data.password, // Hashing in the signUpMethod
         emailVerifiedAt: data.emailVerifiedAt,
+        name: data.name
       }
     });
   }
@@ -166,7 +169,8 @@ export class UserService {
     const user = await this.create({
       email: validated.email,
       password: hashedPassword,
-      emailVerifiedAt
+      emailVerifiedAt,
+      name: validated.email.split("@")[0],
     });
 
     if (VERIFY_EMAIL) {
