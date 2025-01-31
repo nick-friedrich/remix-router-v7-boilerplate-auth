@@ -22,7 +22,8 @@ const createUserSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string()
     .min(PASSWORD_MIN_LENGTH, "Password must be at least 8 characters")
-    .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters"),
+    .max(PASSWORD_MAX_LENGTH, "Password must be at most 128 characters")
+    .optional(), // Because of OTP it is optional
   emailVerifiedAt: z.date().optional(),
   name: z.string().optional(),
 });
@@ -67,7 +68,6 @@ export const sessionStorage = createCookieSessionStorage({
  */
 
 export class UserService {
-
   // Find a user by their id
   static async findById(id: string): Promise<User | null> {
     const validatedId = idSchema.parse(id);
@@ -81,6 +81,17 @@ export class UserService {
     const validatedEmail = z.string().email().parse(email);
     return db.user.findFirst({
       where: { email: validatedEmail, deletedAt: null }
+    });
+  }
+
+  // Find a user by their verification token
+  static async findByVerificationToken({ token, includeExpired = false }: { token: string, includeExpired?: boolean }): Promise<User | null> {
+    const validatedToken = z.string().min(1).parse(token);
+    return db.user.findFirst({
+      where: {
+        verificationToken: validatedToken,
+        ...(includeExpired && { verificationTokenExpiresAt: { not: null } })
+      }
     });
   }
 
@@ -155,7 +166,40 @@ export class UserService {
     return { user, session, headers };
   }
 
-  // TODO: signInWithOtp function
+  // Sign In with OTP
+  static async signInWithOtp({ email }: { email: string }) {
+    // If we don't have Verify Mail enabled, throw error
+    if (!VERIFY_EMAIL) {
+      throw new Error("Email Verification is not enabled, you cannot sign in with OTP.");
+    }
+    const verifiedEmail = z.string().email().parse(email);
+    let user = await this.findByEmail(verifiedEmail);
+    if (!user) {
+      // Create a new user
+      user = await this.create({
+        email: verifiedEmail,
+        name: verifiedEmail.split("@")[0],
+      });
+    }
+
+    const token = crypto.randomUUID();
+    await this.setVerificationToken({ userId: user.id, token, expiresAt: new Date(Date.now() + VERIFICATION_TOKEN_EXPIRATION_TIME) });
+    await this.sendVerificationEmail({ userId: user.id, verifyMail: true });
+
+    return true;
+  }
+
+  // Verify OTP, and create a session
+  static async verifyOtp({ token }: { token: string }): Promise<{ user: User; session: Session; headers: Headers }> {
+    const validatedToken = z.string().min(1).parse(token);
+    const user = await this.findByVerificationToken({ token: validatedToken, includeExpired: false });
+    if (!user) {
+      throw new Error("Invalid token");
+    }
+
+    const { session, headers } = await this.createSession(user.id);
+    return { user, session, headers };
+  }
 
   // Create a new user
   static async signUpWithPasswordAndEmail(data: z.infer<typeof signUpWithPasswordAndEmailSchema>): Promise<User> {
@@ -219,16 +263,6 @@ export class UserService {
       to: user?.email ?? "",
       subject,
       body
-    });
-  }
-
-  // Verify a user's email
-  static async verifyEmail(userId: string): Promise<User> {
-    const validatedId = idSchema.parse(userId);
-    return this.update(validatedId, {
-      emailVerifiedAt: new Date(),
-      verificationToken: null,
-      verificationTokenExpiresAt: null
     });
   }
 

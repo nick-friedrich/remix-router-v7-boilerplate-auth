@@ -1,7 +1,8 @@
 import { redirect } from "react-router";
 import type { Route } from "./+types/login-validate-otp";
+import { UserService } from "~/model/user.server";
 
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
 
@@ -12,16 +13,16 @@ export function loader({ request }: Route.LoaderArgs) {
     return { error: "Invalid token" };
   }
 
-  // TODO: Validate OTP
+  const { user, session, headers } = await UserService.verifyOtp({ token });
 
   // If PW Reset then redirect to reset password
   if (resetPassword) {
-    return redirect("/auth/reset-password");
+    return redirect("/auth/reset-password", { headers });
   }
 
   // If verify mail then redirect to dashboard with success message
   if (verifyMail) {
-    return redirect("/dashboard?emailVerified=true");
+    return redirect("/dashboard?emailVerified=true", { headers });
   }
 
   // Redirect to home
