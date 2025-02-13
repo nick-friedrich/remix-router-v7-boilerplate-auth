@@ -18,6 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     return redirect("/dashboard");
   }
   const url = new URL(request.url);
+  // If we signed up we redirect to the login page with a message
   const showEmailSentMessage = url.searchParams.get("showEmailSentMessage");
   if (showEmailSentMessage) {
     return { showEmailSentMessage };
